@@ -11,67 +11,130 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Find source archive
+      - name: Find archive
         shell: bash
         run: |
           set -e
 
+          echo "===== 当前目录 ====="
+          pwd
+
+          echo
           echo "===== 查找压缩包 ====="
-          find . -maxdepth 3 -type f \( \
-            -name "LSPatch-v1.2-module-ui-source.tar.gz" \
-            -o -name "*.tar.gz" \
-            \) -print
+          find . -type f -name "LSPatch-v1.2-module-ui-source.tar.gz" -print
 
           ARCHIVE="./LSPatch-v1.2-module-ui-source.tar.gz"
 
           if [ ! -f "$ARCHIVE" ]; then
-            echo "错误：找不到 $ARCHIVE"
+            echo "ERROR: 找不到压缩包：$ARCHIVE"
             exit 1
           fi
 
-      - name: Extract LSPatch folder to repository root
+          echo
+          echo "找到压缩包："
+          ls -lh "$ARCHIVE"
+
+      - name: Extract archive
         shell: bash
         run: |
           set -e
 
           ARCHIVE="./LSPatch-v1.2-module-ui-source.tar.gz"
+          TMP_DIR="$RUNNER_TEMP/lspatch_extract"
 
-          echo "===== 查看压缩包内容 ====="
-          tar -tzf "$ARCHIVE" | head -100
+          rm -rf "$TMP_DIR"
+          mkdir -p "$TMP_DIR"
 
-          echo
-          echo "===== 解压 LSPatch 文件夹内容到根目录 ====="
+          echo "===== 解压压缩包 ====="
 
-          mkdir -p .extract_tmp
+          tar -xzf "$ARCHIVE" -C "$TMP_DIR"
 
-          tar -xzf "$ARCHIVE" -C .extract_tmp
+          echo "===== 解压完成 ====="
 
-          if [ ! -d ".extract_tmp/LSPatch" ]; then
-            echo "错误：压缩包中没有 LSPatch 文件夹"
-            find .extract_tmp -maxdepth 3 -print
+          if [ ! -d "$TMP_DIR/LSPatch" ]; then
+            echo "ERROR: 压缩包中没有 LSPatch 文件夹"
+            echo
+            echo "实际内容："
+            find "$TMP_DIR" -maxdepth 3 -print
             exit 1
           fi
 
-          cp -a .extract_tmp/LSPatch/. ./
+          echo "找到：$TMP_DIR/LSPatch"
 
-          rm -rf .extract_tmp
+      - name: Copy LSPatch contents to root
+        shell: bash
+        run: |
+          set -e
 
-          echo
-          echo "===== 解压完成，根目录结构 ====="
-          find . -maxdepth 2 -type f | sort | head -200
+          TMP_DIR="$RUNNER_TEMP/lspatch_extract"
+          SOURCE="$TMP_DIR/LSPatch"
+
+          echo "===== 将 LSPatch 内容复制到仓库根目录 ====="
+
+          cp -a "$SOURCE"/. ./
+
+          echo "复制完成"
 
       - name: Remove archive
         shell: bash
         run: |
+          set -e
+
           rm -f "./LSPatch-v1.2-module-ui-source.tar.gz"
 
-      - name: Commit extracted source
+          echo "===== 已删除原始压缩包 ====="
+
+      - name: Show result
+        shell: bash
+        run: |
+          set -e
+
+          echo
+          echo "========================================"
+          echo "       LSPatch 解压完成"
+          echo "========================================"
+          echo
+
+          echo "===== 根目录 ====="
+          ls -la
+
+          echo
+          echo "===== 关键文件 ====="
+
+          for file in \
+            "settings.gradle" \
+            "settings.gradle.kts" \
+            "build.gradle" \
+            "build.gradle.kts" \
+            "gradlew" \
+            "gradlew.bat"; do
+
+            if [ -f "$file" ]; then
+              echo "FOUND: $file"
+            fi
+          done
+
+          echo
+          echo "===== app / core ====="
+
+          if [ -d "app" ]; then
+            echo "FOUND: app/"
+          fi
+
+          if [ -d "core" ]; then
+            echo "FOUND: core/"
+          fi
+
+      - name: Commit and push
         shell: bash
         run: |
           set -e
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          echo "===== Git 状态 ====="
+          git status --short
 
           git add -A
 
@@ -81,4 +144,10 @@ jobs:
           fi
 
           git commit -m "Extract LSPatch source to repository root"
+
           git push
+
+          echo
+          echo "========================================"
+          echo "       提交并推送成功"
+          echo "========================================"
