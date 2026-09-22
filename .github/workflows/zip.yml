@@ -1,8 +1,7 @@
-name: Extract TAR.GZ
+name: Extract LSPatch Source
 
 on:
   workflow_dispatch:
-  push:
 
 jobs:
   extract:
@@ -12,32 +11,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract
+      - name: Extract TAR.GZ to root
         run: |
           set -e
 
           ARCHIVE="LSPatch-v1.2-module-ui-source.tar.gz"
-          OUT="source"
 
           echo "===== 压缩包 ====="
           ls -lh "$ARCHIVE"
 
           echo
-          echo "===== 压缩包内部 ====="
-          tar -tzf "$ARCHIVE" | head -300
+          echo "===== 压缩包内容 ====="
+          tar -tzf "$ARCHIVE"
 
           echo
-          echo "===== 解压 ====="
-          rm -rf "$OUT"
-          mkdir -p "$OUT"
-          tar -xzf "$ARCHIVE" -C "$OUT"
+          echo "===== 解压到仓库根目录 ====="
+          tar -xzf "$ARCHIVE" -C .
 
           echo
-          echo "===== 解压后的完整目录 ====="
-          find "$OUT" -type f | sort
+          echo "===== 解压完成 ====="
+          ls -lah
 
-      - name: Upload source
-        uses: actions/upload-artifact@v4
-        with:
-          name: LSPatch-v1.2-source-extracted
-          path: source/
+      - name: Show project files
+        run: |
+          echo "===== 根目录文件 ====="
+          find . -maxdepth 2 -type f \
+            ! -path "./.git/*" \
+            | sort
